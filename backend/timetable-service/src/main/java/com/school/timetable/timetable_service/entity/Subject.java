@@ -18,4 +18,10 @@ public class Subject {
     private String subjectName;
 
     private Integer weeklyPeriods;
+
+    private Boolean requiresConsecutivePeriods;
+
+    private Integer priorityLevel;
+
+    private Integer maxPeriodsPerDay;
 }

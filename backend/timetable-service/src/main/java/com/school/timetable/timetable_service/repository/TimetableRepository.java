@@ -20,4 +20,22 @@ public interface TimetableRepository
             String dayName,
             Integer periodNumber
     );
+
+    long countByTeacherIdAndDayName(
+            Long teacherId,
+            String dayName
+    );
+
+    long countByTeacherIdAndDayNameAndPeriodNumberBetween(
+            Long teacherId,
+            String dayName,
+            Integer start,
+            Integer end
+    );
+
+    long countByClassIdAndSubjectIdAndDayName(
+            Long classId,
+            Long subjectId,
+            String dayName
+    );
 }

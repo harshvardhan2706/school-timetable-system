@@ -18,6 +18,6 @@ public class TimetableController {
 
         service.generateTimetable();
 
-        return "Timetable Generated Successfully";
+        return "Smart Timetable Generated Successfully";
     }
 }
