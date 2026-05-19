@@ -1,5 +1,7 @@
 package com.school.timetable.auth_service.security;
 
+import com.school.timetable.auth_service.entity.User;
+
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
@@ -77,4 +79,50 @@ public class JwtService {
             return true;
         }
     }
+
+    public String extractUsername(String token) {
+
+        return Jwts.parserBuilder()
+                .setSigningKey(
+                        Keys.hmacShaKeyFor(secret.getBytes())
+                )
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .getSubject();
+    }
+
+    public String extractRole(String token) {
+
+        return Jwts.parserBuilder()
+                .setSigningKey(
+                        Keys.hmacShaKeyFor(secret.getBytes())
+                )
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("role", String.class);
+    }
+
+    public String generateToken(User user) {
+
+    return Jwts.builder()
+            .setSubject(user.getEmail())
+
+            .claim("role", user.getRole())
+
+            .setIssuedAt(new Date())
+
+            .setExpiration(
+                    new Date(System.currentTimeMillis() + 1000 * 60 * 60)
+            )
+
+            .signWith(
+                    Keys.hmacShaKeyFor(secret.getBytes()),
+                    SignatureAlgorithm.HS256
+            )
+
+            .compact();
+}
+
 }
