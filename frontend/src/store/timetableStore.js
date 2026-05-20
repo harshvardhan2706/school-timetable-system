@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { validateSchedule as validateScheduleUtil } from '../utils/conflictDetection'
+import autoSaveEngine from '../services/autoSaveEngine'
 
 const initialSchedule = {
   Monday: [
@@ -118,23 +119,52 @@ const initialSchedule = {
   ],
 }
 
-const useTimetableStore = create((set) => ({
+const useTimetableStore = create((set, get) => ({
   schedule: validateScheduleUtil(initialSchedule),
   selectedSlot: null,
   activeEditSlot: null,
   isEditModalOpen: false,
+  saveStatus: 'idle',
+  hasUnsavedChanges: false,
+  lastSavedAt: null,
   history: {
     past: [],
     future: [],
   },
 
-  setSchedule: (data) => set({ schedule: validateScheduleUtil(data) }),
+  setSchedule: (data) => {
+    const validated = validateScheduleUtil(data)
+    set({
+      schedule: validated,
+      hasUnsavedChanges: false,
+      lastSavedAt: new Date(),
+      saveStatus: 'saved',
+    })
+  },
 
   validateSchedule: (schedule) => validateScheduleUtil(schedule),
+
   runValidation: () =>
     set((state) => ({
       schedule: validateScheduleUtil(state.schedule),
     })),
+
+  _triggerAutoSave: (schedule) => {
+    set({ saveStatus: 'idle', hasUnsavedChanges: true })
+    autoSaveEngine.schedule(schedule, (status) => {
+      if (status === 'saved') {
+        set({
+          saveStatus: 'saved',
+          hasUnsavedChanges: false,
+          lastSavedAt: new Date(),
+        })
+      } else if (status === 'saving') {
+        set({ saveStatus: 'saving' })
+      } else if (status === 'error') {
+        set({ saveStatus: 'error', hasUnsavedChanges: true })
+      }
+    })
+  },
 
   openEditModal: (payload) =>
     set({
@@ -167,13 +197,16 @@ const useTimetableStore = create((set) => ({
       const validatedSchedule = validateScheduleUtil(nextSchedule)
       const validatedSlot = validatedSchedule[day][index]
 
-      return {
+      const newState = {
         schedule: validatedSchedule,
         selectedSlot: { ...state.selectedSlot, slot: validatedSlot },
         activeEditSlot: state.activeEditSlot
           ? { ...state.activeEditSlot, slot: validatedSlot }
           : null,
       }
+
+      get()._triggerAutoSave(validatedSchedule)
+      return newState
     }),
 
   swapSlots: (sourceDay, sourceIndex, targetDay, targetIndex) =>
@@ -191,9 +224,13 @@ const useTimetableStore = create((set) => ({
       nextSchedule[sourceDay] = sourceSlots
       nextSchedule[targetDay] = targetSlots
 
-      return {
-        schedule: validateScheduleUtil(nextSchedule),
+      const validatedSchedule = validateScheduleUtil(nextSchedule)
+      const newState = {
+        schedule: validatedSchedule,
       }
+
+      get()._triggerAutoSave(validatedSchedule)
+      return newState
     }),
 
   recordHistory: (snapshot) =>
@@ -203,6 +240,28 @@ const useTimetableStore = create((set) => ({
         future: [],
       },
     })),
+
+  flushAutoSave: async () => {
+    const state = get()
+    return autoSaveEngine.flush(state.schedule, (status) => {
+      if (status === 'saved') {
+        set({
+          saveStatus: 'saved',
+          hasUnsavedChanges: false,
+          lastSavedAt: new Date(),
+        })
+      } else if (status === 'saving') {
+        set({ saveStatus: 'saving' })
+      } else if (status === 'error') {
+        set({ saveStatus: 'error' })
+      }
+    })
+  },
+
+  cancelAutoSave: () => {
+    autoSaveEngine.cancel()
+    set({ saveStatus: 'idle' })
+  },
 }))
 
-export default useTimetableStore;
+export default useTimetableStore

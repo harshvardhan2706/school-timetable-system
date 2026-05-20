@@ -1,18 +1,40 @@
-﻿import useTimetableStore from '../../store/timetableStore'
+﻿import { useEffect } from 'react'
+import useTimetableStore from '../../store/timetableStore'
 import TimetableSlot from '../../components/TimetableSlot'
 import TimetableEditModal from '../../components/timetable/TimetableEditModal'
+import SaveStatusIndicator from '../../components/SaveStatusIndicator'
 import { CalendarDays } from 'lucide-react'
+import { getTimetable } from '../../services/timetableService'
 
 export default function TimetablePage() {
   const schedule = useTimetableStore((state) => state.schedule)
   const openEditModal = useTimetableStore((state) => state.openEditModal)
+  const setSchedule = useTimetableStore((state) => state.setSchedule)
+
+  useEffect(() => {
+    const fetchInitialSchedule = async () => {
+      try {
+        const data = await getTimetable()
+        if (data && typeof data === 'object') {
+          setSchedule(data)
+        }
+      } catch (error) {
+        console.error('Failed to fetch timetable:', error.message)
+      }
+    }
+
+    fetchInitialSchedule()
+  }, [setSchedule])
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-1">
-        <div className="inline-flex items-center gap-2 rounded-3xl border border-white/10 bg-slate-950/60 px-4 py-2 text-sm text-slate-300 shadow-soft">
-          <CalendarDays className="h-5 w-5 text-blue-400" />
-          Live edit mode enabled
+        <div className="flex items-center justify-between mb-4">
+          <div className="inline-flex items-center gap-2 rounded-3xl border border-white/10 bg-slate-950/60 px-4 py-2 text-sm text-slate-300 shadow-soft">
+            <CalendarDays className="h-5 w-5 text-blue-400" />
+            Live edit mode enabled
+          </div>
+          <SaveStatusIndicator />
         </div>
         <h1 className="text-2xl font-bold text-white tracking-tight flex items-center gap-2">
           <CalendarDays className="h-6 w-6 text-blue-500" /> Timetable Engine
