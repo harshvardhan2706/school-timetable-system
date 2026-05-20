@@ -1,16 +1,16 @@
-// components/Sidebar.jsx
 import { LayoutDashboard, Users, BookOpen, GraduationCap, Calendar, FileText, Upload, Settings } from 'lucide-react'
 import { NavLink } from 'react-router-dom'
 
+// FIX 3: Change relative paths to absolute system paths
 const menuItems = [
-  { path: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { path: 'teachers', label: 'Teachers', icon: Users },
-  { path: 'classes', label: 'Classes', icon: GraduationCap },
-  { path: 'subjects', label: 'Subjects', icon: BookOpen },
-  { path: 'timetable', label: 'Timetable', icon: Calendar },
-  { path: 'reports', label: 'Reports', icon: FileText },
-  { path: 'excel-upload', label: 'Excel Upload', icon: Upload },
-  { path: 'settings', label: 'Settings', icon: Settings },
+  { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { path: '/dashboard/teachers', label: 'Teachers', icon: Users },
+  { path: '/dashboard/classes', label: 'Classes', icon: GraduationCap },
+  { path: '/dashboard/subjects', label: 'Subjects', icon: BookOpen },
+  { path: '/dashboard/timetable', label: 'Timetable', icon: Calendar },
+  { path: '/dashboard/reports', label: 'Reports', icon: FileText },
+  { path: '/dashboard/excel-upload', label: 'Excel Upload', icon: Upload },
+  { path: '/dashboard/settings', label: 'Settings', icon: Settings },
 ]
 
 export default function Sidebar() {
@@ -29,6 +29,9 @@ export default function Sidebar() {
             <NavLink
               key={item.path}
               to={item.path}
+              // FIX 4: 'end' matches the base dashboard path strictly so it doesn't 
+              // highlight concurrently when viewing other nested sub-routes.
+              end={item.path === '/dashboard'}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-all duration-150 ${
                   isActive

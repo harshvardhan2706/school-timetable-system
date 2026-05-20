@@ -1,5 +1,5 @@
 import { createContext, useCallback, useEffect, useState } from 'react'
-import api from '../services/api'
+import { login as loginService, register as registerService } from '../services/authService'
 
 export const AuthContext = createContext(null)
 
@@ -14,20 +14,24 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (token) {
       window.localStorage.setItem('school-timetable-token', token)
+    } else {
+      window.localStorage.removeItem('school-timetable-token')
     }
   }, [token])
 
   useEffect(() => {
     if (user) {
       window.localStorage.setItem('school-timetable-user', JSON.stringify(user))
+    } else {
+      window.localStorage.removeItem('school-timetable-user')
     }
   }, [user])
 
   const login = useCallback(async (credentials) => {
     setLoading(true)
     try {
-      const response = await api.post('/auth/login', credentials)
-      setToken(response.data.token)
+      const response = await loginService(credentials)
+      setToken(response.token)
       setUser({ email: credentials.email })
       return true
     } finally {
@@ -38,7 +42,7 @@ export function AuthProvider({ children }) {
   const register = useCallback(async (payload) => {
     setLoading(true)
     try {
-      await api.post('/auth/register', payload)
+      await registerService(payload)
       return login({ email: payload.email, password: payload.password })
     } catch (error) {
       throw new Error(error.response?.data?.message || 'Registration failed. Please try again.')

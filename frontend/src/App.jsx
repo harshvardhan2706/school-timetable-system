@@ -5,18 +5,24 @@ import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './pages/auth/Login'
 import RegisterPage from './pages/auth/Register'
 import { AuthProvider } from './context/AuthContext'
+import { ThemeProvider } from './context/ThemeContext'
+import { LayoutProvider } from './context/LayoutContext'
 
 function App() {
   return (
-    <AuthProvider>
-      <AnimatePresence mode="wait">
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/*" element={<ProtectedRoute><AppLayout /></ProtectedRoute>} />
-        </Routes>
-      </AnimatePresence>
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <LayoutProvider>
+          <AnimatePresence mode="wait">
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/*" element={<ProtectedRoute><AppLayout /></ProtectedRoute>} />
+            </Routes>
+          </AnimatePresence>
+        </LayoutProvider>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 
