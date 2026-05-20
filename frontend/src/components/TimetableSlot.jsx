@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { motion } from 'framer-motion'
 import { AlertTriangle, Clock, Layers, MapPin, User } from 'lucide-react'
 import { Badge } from './ui'
@@ -6,7 +7,7 @@ import { getSubjectColorClasses } from '../utils/subjectColors'
 const TimetableSlot = ({ slot, onClick }) => {
   const subjectStyles = getSubjectColorClasses(slot.subject)
   const conflictStyles = slot.hasConflict
-    ? 'border-rose-500/60 bg-rose-500/10 shadow-2xl shadow-rose-500/15 ring-1 ring-rose-500/20 animate-pulse'
+    ? 'border-rose-500/60 bg-rose-500/10 shadow-2xl shadow-rose-500/15 ring-1 ring-rose-500/20 animate-pulse hover:shadow-red-500/20'
     : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30 hover:shadow-xl hover:shadow-blue-500/10'
 
   return (
@@ -16,6 +17,7 @@ const TimetableSlot = ({ slot, onClick }) => {
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.98 }}
       className={`group relative w-full overflow-hidden rounded-3xl border p-4 text-left transition-all duration-300 ${conflictStyles} bg-gradient-to-br ${subjectStyles}`}
+      title={slot.hasConflict ? slot.conflictMessages.join(' · ') : undefined}
     >
       {slot.hasConflict && (
         <div className="absolute right-4 top-4 flex items-center gap-2 rounded-full border border-rose-400/20 bg-rose-500/15 px-3 py-1 text-[11px] font-semibold text-rose-100 shadow-lg shadow-rose-500/10">
@@ -54,6 +56,20 @@ const TimetableSlot = ({ slot, onClick }) => {
         <span>{slot.endTime}</span>
       </div>
 
+      {slot.hasConflict && slot.conflictMessages.length > 0 && (
+        <div className="mt-4 rounded-3xl border border-rose-400/30 bg-rose-500/10 px-3 py-3 text-sm text-rose-100 shadow-rose-500/10">
+          <div className="flex items-center gap-2 font-semibold text-rose-100">
+            <AlertTriangle className="h-4 w-4 text-rose-200" />
+            {slot.conflictType === 'multiple' ? 'Multiple conflicts detected' : `${slot.conflictType} conflict detected`}
+          </div>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-xs text-rose-100/80">
+            {slot.conflictMessages.map((message, index) => (
+              <li key={index}>{message}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="pointer-events-none absolute inset-x-4 bottom-4 text-[10px] uppercase tracking-[0.24em] text-slate-500 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
         Tap to edit live
       </div>
@@ -61,4 +77,4 @@ const TimetableSlot = ({ slot, onClick }) => {
   )
 }
 
-export default TimetableSlot;
+export default memo(TimetableSlot)

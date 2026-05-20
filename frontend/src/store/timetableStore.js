@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { validateSchedule as validateScheduleUtil } from '../utils/conflictDetection'
 
 const initialSchedule = {
   Monday: [
@@ -12,6 +13,8 @@ const initialSchedule = {
       endTime: '09:45',
       color: 'blue',
       hasConflict: false,
+      conflictType: null,
+      conflictMessages: [],
     },
     {
       id: 'slot-2',
@@ -23,6 +26,8 @@ const initialSchedule = {
       endTime: '10:45',
       color: 'emerald',
       hasConflict: false,
+      conflictType: null,
+      conflictMessages: [],
     },
   ],
   Tuesday: [
@@ -36,6 +41,8 @@ const initialSchedule = {
       endTime: '09:45',
       color: 'purple',
       hasConflict: false,
+      conflictType: null,
+      conflictMessages: [],
     },
     {
       id: 'slot-4',
@@ -47,6 +54,8 @@ const initialSchedule = {
       endTime: '11:45',
       color: 'amber',
       hasConflict: false,
+      conflictType: null,
+      conflictMessages: [],
     },
   ],
   Wednesday: [
@@ -60,6 +69,8 @@ const initialSchedule = {
       endTime: '09:45',
       color: 'purple',
       hasConflict: false,
+      conflictType: null,
+      conflictMessages: [],
     },
     {
       id: 'slot-6',
@@ -71,6 +82,8 @@ const initialSchedule = {
       endTime: '13:45',
       color: 'pink',
       hasConflict: false,
+      conflictType: null,
+      conflictMessages: [],
     },
   ],
   Thursday: [
@@ -84,6 +97,8 @@ const initialSchedule = {
       endTime: '10:45',
       color: 'cyan',
       hasConflict: false,
+      conflictType: null,
+      conflictMessages: [],
     },
   ],
   Friday: [
@@ -97,12 +112,14 @@ const initialSchedule = {
       endTime: '14:45',
       color: 'sky',
       hasConflict: false,
+      conflictType: null,
+      conflictMessages: [],
     },
   ],
 }
 
 const useTimetableStore = create((set) => ({
-  schedule: initialSchedule,
+  schedule: validateScheduleUtil(initialSchedule),
   selectedSlot: null,
   activeEditSlot: null,
   isEditModalOpen: false,
@@ -111,7 +128,13 @@ const useTimetableStore = create((set) => ({
     future: [],
   },
 
-  setSchedule: (data) => set({ schedule: data }),
+  setSchedule: (data) => set({ schedule: validateScheduleUtil(data) }),
+
+  validateSchedule: (schedule) => validateScheduleUtil(schedule),
+  runValidation: () =>
+    set((state) => ({
+      schedule: validateScheduleUtil(state.schedule),
+    })),
 
   openEditModal: (payload) =>
     set({
@@ -132,29 +155,32 @@ const useTimetableStore = create((set) => ({
       if (!state.selectedSlot) return state
 
       const { day, index } = state.selectedSlot
-      const schedule = { ...state.schedule }
-      const daySlots = [...schedule[day]]
+      const nextSchedule = { ...state.schedule }
+      const daySlots = [...nextSchedule[day]]
       const updatedSlot = {
         ...daySlots[index],
         ...updatedFields,
       }
       daySlots[index] = updatedSlot
-      schedule[day] = daySlots
+      nextSchedule[day] = daySlots
+
+      const validatedSchedule = validateScheduleUtil(nextSchedule)
+      const validatedSlot = validatedSchedule[day][index]
 
       return {
-        schedule,
-        selectedSlot: { ...state.selectedSlot, slot: updatedSlot },
+        schedule: validatedSchedule,
+        selectedSlot: { ...state.selectedSlot, slot: validatedSlot },
         activeEditSlot: state.activeEditSlot
-          ? { ...state.activeEditSlot, slot: updatedSlot }
+          ? { ...state.activeEditSlot, slot: validatedSlot }
           : null,
       }
     }),
 
   swapSlots: (sourceDay, sourceIndex, targetDay, targetIndex) =>
     set((state) => {
-      const schedule = { ...state.schedule }
-      const sourceSlots = [...schedule[sourceDay]]
-      const targetSlots = [...schedule[targetDay]]
+      const nextSchedule = { ...state.schedule }
+      const sourceSlots = [...nextSchedule[sourceDay]]
+      const targetSlots = [...nextSchedule[targetDay]]
 
       if (!sourceSlots[sourceIndex] || !targetSlots[targetIndex]) return state
 
@@ -162,10 +188,12 @@ const useTimetableStore = create((set) => ({
       sourceSlots[sourceIndex] = targetSlots[targetIndex]
       targetSlots[targetIndex] = temp
 
-      schedule[sourceDay] = sourceSlots
-      schedule[targetDay] = targetSlots
+      nextSchedule[sourceDay] = sourceSlots
+      nextSchedule[targetDay] = targetSlots
 
-      return { schedule }
+      return {
+        schedule: validateScheduleUtil(nextSchedule),
+      }
     }),
 
   recordHistory: (snapshot) =>
