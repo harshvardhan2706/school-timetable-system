@@ -1,27 +1,27 @@
 @import "tailwindcss";
 
-/* CRITICAL FIX: Tell Tailwind v4 to scan your React files */
+/* CRITICAL FIX: Make sure the relative path perfectly targets your components */
 @source "../src/**/*.{js,jsx,ts,tsx}";
 
 @theme {
+  /* Tailwind v4 automatically maps these to bg-page, text-muted, border-surface, etc. */
   --color-page: #020617;
   --color-surface: rgba(15, 23, 42, 0.88);
   --color-text: #f8fafc;
   --color-muted: #94a3b8;
   --color-border: rgba(255, 255, 255, 0.08);
+  
   --shadow-soft: 0 24px 80px rgba(0, 0, 0, 0.2), inset 0 1px 2px rgba(255, 255, 255, 0.04);
 }
 
 :root {
   color-scheme: dark;
   font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  background: var(--color-page);
-  color: var(--color-text);
-  font-size: 16px;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
 
+/* Theme Variant Overrides */
 .light {
   color-scheme: light;
   --color-page: #f8fafc;
@@ -30,7 +30,6 @@
   --color-muted: #475569;
   --color-border: rgba(15, 23, 42, 0.12);
   --shadow-soft: 0 24px 80px rgba(15, 23, 42, 0.08), inset 0 1px 2px rgba(255, 255, 255, 0.7);
-  background: #f8fafc;
 }
 
 .school {
@@ -42,21 +41,16 @@
   --shadow-soft: 0 24px 100px rgba(15, 23, 42, 0.22), inset 0 1px 2px rgba(255, 255, 255, 0.06);
 }
 
-.bg-page { background: var(--color-page); }
-.bg-surface { background: var(--color-surface); }
-.text-text { color: var(--color-text); }
-.border-surface { border-color: var(--color-border); }
-.shadow-soft { box-shadow: var(--shadow-soft); }
-
+/* Global Layout Rules */
 html {
   scroll-behavior: smooth;
 }
 
 body {
   min-height: 100vh;
-  /* Premium radial glowing backdrop */
-  background: radial-gradient(circle at top, rgba(59, 130, 246, 0.12), transparent 40%), #020617;
-  color: #f8fafc;
+  background: radial-gradient(circle at top, rgba(59, 130, 246, 0.12), transparent 40%), var(--color-page);
+  color: var(--color-text);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #root {
@@ -72,7 +66,7 @@ body {
   color: #f8fafc;
 }
 
-/* Scrollbar styling */
+/* Webkit Scrollbar Customizations */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

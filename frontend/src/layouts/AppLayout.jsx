@@ -1,15 +1,7 @@
 import { motion } from 'framer-motion'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Outlet } from 'react-router-dom' // <-- 1. Routes ki jagah Outlet import karein
 import Sidebar from '../components/Sidebar'
 import Navbar from '../components/Navbar'
-import DashboardPage from '../pages/dashboard/Dashboard'
-import TeachersPage from '../pages/teachers/Teachers'
-import ClassesPage from '../pages/classes/Classes'
-import SubjectsPage from '../pages/subjects/Subjects'
-import TimetablePage from '../pages/timetable/Timetable'
-import ReportsPage from '../pages/reports/Reports'
-import ExcelUploadPage from '../pages/excel/ExcelUpload'
-import SettingsPage from '../pages/settings/Settings'
 import { useLayout } from '../context/LayoutContext'
 
 const pageTransition = {
@@ -52,22 +44,10 @@ export default function AppLayout() {
 
           <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8">
             <motion.div initial="hidden" animate="visible" variants={pageTransition} className="w-full h-full">
-              <Routes>
-                {/* FIX 1: Use absolute paths for the redirect fallbacks */}
-                <Route path="/" element={<Navigate replace to="/dashboard" />} />
-                
-                <Route path="dashboard" element={<DashboardPage />} />
-                <Route path="teachers" element={<TeachersPage />} />
-                <Route path="classes" element={<ClassesPage />} />
-                <Route path="subjects" element={<SubjectsPage />} />
-                <Route path="timetable" element={<TimetablePage />} />
-                <Route path="reports" element={<ReportsPage />} />
-                <Route path="excel-upload" element={<ExcelUploadPage />} />
-                <Route path="settings" element={<SettingsPage />} />
-                
-                {/* FIX 2: Clear routing wildcard boundary avoids string stacking strings */}
-                <Route path="*" element={<Navigate replace to="/dashboard" />} />
-              </Routes>
+              
+              {/* 2. SAARE NESTED PAGES AB IS OUTLET KI JAGAH RENDER HONGE */}
+              <Outlet />
+
             </motion.div>
           </main>
         </div>

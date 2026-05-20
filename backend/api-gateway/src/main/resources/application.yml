@@ -3,37 +3,22 @@ spring:
     name: api-gateway
   cloud:
     gateway:
-      routes:
-        # Teacher Service Route
-        - id: teacher-service
-          uri: lb://TEACHER-SERVICE
-          predicates:
-            - Path=/api/teachers/**
-        
-        # Auth Service Route
-        - id: auth-service
-          uri: lb://AUTH-SERVICE
-          predicates:
-            - Path=/api/auth/**
-        
-        # Class Service Route
-        - id: class-service
-          uri: lb://CLASS-SERVICE
-          predicates:
-            - Path=/api/classes/**
-      
-      # Enable discovery locator for automatic route generation
       discovery:
         locator:
-          enabled: true
+          enabled: false
           lower-case-service-id: true
-      
       # CORS Configuration
       default-filters:
         - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials
 
 server:
   port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,loggers,env,configprops,mappings
 
 eureka:
   client:
