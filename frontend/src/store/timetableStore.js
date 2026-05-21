@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { validateSchedule as validateScheduleUtil } from '../utils/conflictDetection'
 import autoSaveEngine from '../services/autoSaveEngine'
+import { calculateTeacherAvailability, teacherAvailabilitySelectors } from '../utils/teacherAvailability'
 
 const initialSchedule = {
   Monday: [
@@ -119,14 +120,21 @@ const initialSchedule = {
   ],
 }
 
+const validatedInitialSchedule = validateScheduleUtil(initialSchedule)
+const initialTeacherAvailability = calculateTeacherAvailability(validatedInitialSchedule)
+
 const useTimetableStore = create((set, get) => ({
-  schedule: validateScheduleUtil(initialSchedule),
+  schedule: validatedInitialSchedule,
   selectedSlot: null,
   activeEditSlot: null,
   isEditModalOpen: false,
   saveStatus: 'idle',
   hasUnsavedChanges: false,
   lastSavedAt: null,
+  teacherAvailabilityMap: initialTeacherAvailability.teacherAvailabilityMap,
+  teacherLoadMap: initialTeacherAvailability.teacherLoadMap,
+  teacherStats: initialTeacherAvailability.teacherStats,
+  availabilitySelectors: teacherAvailabilitySelectors,
   history: {
     past: [],
     future: [],
@@ -134,20 +142,42 @@ const useTimetableStore = create((set, get) => ({
 
   setSchedule: (data) => {
     const validated = validateScheduleUtil(data)
+    const availability = calculateTeacherAvailability(validated)
+
     set({
       schedule: validated,
+      teacherAvailabilityMap: availability.teacherAvailabilityMap,
+      teacherLoadMap: availability.teacherLoadMap,
+      teacherStats: availability.teacherStats,
       hasUnsavedChanges: false,
       lastSavedAt: new Date(),
       saveStatus: 'saved',
     })
   },
 
+  refreshTeacherAvailability: (schedule) => {
+    const availability = calculateTeacherAvailability(schedule)
+    set({
+      teacherAvailabilityMap: availability.teacherAvailabilityMap,
+      teacherLoadMap: availability.teacherLoadMap,
+      teacherStats: availability.teacherStats,
+    })
+    return availability
+  },
+
   validateSchedule: (schedule) => validateScheduleUtil(schedule),
 
   runValidation: () =>
-    set((state) => ({
-      schedule: validateScheduleUtil(state.schedule),
-    })),
+    set((state) => {
+      const validated = validateScheduleUtil(state.schedule)
+      const availability = calculateTeacherAvailability(validated)
+      return {
+        schedule: validated,
+        teacherAvailabilityMap: availability.teacherAvailabilityMap,
+        teacherLoadMap: availability.teacherLoadMap,
+        teacherStats: availability.teacherStats,
+      }
+    }),
 
   _triggerAutoSave: (schedule) => {
     set({ saveStatus: 'idle', hasUnsavedChanges: true })
@@ -196,17 +226,15 @@ const useTimetableStore = create((set, get) => ({
 
       const validatedSchedule = validateScheduleUtil(nextSchedule)
       const validatedSlot = validatedSchedule[day][index]
+      get().refreshTeacherAvailability(validatedSchedule)
 
-      const newState = {
+      return {
         schedule: validatedSchedule,
         selectedSlot: { ...state.selectedSlot, slot: validatedSlot },
         activeEditSlot: state.activeEditSlot
           ? { ...state.activeEditSlot, slot: validatedSlot }
           : null,
       }
-
-      get()._triggerAutoSave(validatedSchedule)
-      return newState
     }),
 
   swapSlots: (sourceDay, sourceIndex, targetDay, targetIndex) =>
@@ -225,12 +253,11 @@ const useTimetableStore = create((set, get) => ({
       nextSchedule[targetDay] = targetSlots
 
       const validatedSchedule = validateScheduleUtil(nextSchedule)
-      const newState = {
+      get().refreshTeacherAvailability(validatedSchedule)
+
+      return {
         schedule: validatedSchedule,
       }
-
-      get()._triggerAutoSave(validatedSchedule)
-      return newState
     }),
 
   recordHistory: (snapshot) =>

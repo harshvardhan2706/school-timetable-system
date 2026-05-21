@@ -3,12 +3,17 @@ import { motion } from 'framer-motion'
 import { AlertTriangle, Clock, Layers, MapPin, User } from 'lucide-react'
 import { Badge } from './ui'
 import { getSubjectColorClasses } from '../utils/subjectColors'
+import useTimetableStore from '../store/timetableStore'
 
 const TimetableSlot = ({ slot, onClick }) => {
   const subjectStyles = getSubjectColorClasses(slot.subject)
+  const teacherAvailability = useTimetableStore((state) => state.teacherAvailabilityMap[slot.teacher])
+  const isTeacherOverloaded = teacherAvailability?.status === 'overloaded'
   const conflictStyles = slot.hasConflict
     ? 'border-rose-500/60 bg-rose-500/10 shadow-2xl shadow-rose-500/15 ring-1 ring-rose-500/20 animate-pulse hover:shadow-red-500/20'
-    : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30 hover:shadow-xl hover:shadow-blue-500/10'
+    : isTeacherOverloaded
+      ? 'border-rose-400/60 bg-rose-500/10 shadow-xl shadow-rose-500/10 hover:border-rose-300'
+      : 'border-white/10 bg-slate-950/70 hover:border-blue-500/30 hover:shadow-xl hover:shadow-blue-500/10'
 
   return (
     <motion.button
@@ -17,7 +22,13 @@ const TimetableSlot = ({ slot, onClick }) => {
       whileHover={{ scale: 1.02, y: -2 }}
       whileTap={{ scale: 0.98 }}
       className={`group relative w-full overflow-hidden rounded-3xl border p-4 text-left transition-all duration-300 ${conflictStyles} bg-gradient-to-br ${subjectStyles}`}
-      title={slot.hasConflict ? slot.conflictMessages.join(' · ') : undefined}
+      title={
+        slot.hasConflict
+          ? slot.conflictMessages.join(' · ')
+          : isTeacherOverloaded
+            ? 'Teacher workload is high — consider rescheduling'
+            : undefined
+      }
     >
       {slot.hasConflict && (
         <div className="absolute right-4 top-4 flex items-center gap-2 rounded-full border border-rose-400/20 bg-rose-500/15 px-3 py-1 text-[11px] font-semibold text-rose-100 shadow-lg shadow-rose-500/10">
