@@ -1,7 +1,5 @@
 package com.school.timetable.auth_service.config;
 
-import com.school.timetable.auth_service.security.JwtFilter;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -11,6 +9,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+import com.school.timetable.auth_service.security.JwtFilter;
+
+import lombok.RequiredArgsConstructor;
 
 @Configuration
 @EnableWebSecurity
@@ -25,13 +27,15 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http)
-            throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
+                // CORS is handled by API Gateway - do NOT configure here
                 .csrf(csrf -> csrf.disable())
 
                 .authorizeHttpRequests(auth -> auth
+                        // Allow OPTIONS requests for CORS preflight
+                        .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
 
                         .requestMatchers("/api/auth/**")
                         .permitAll()
@@ -39,7 +43,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/admin/**")
                         .hasAuthority("ADMIN")
 
-                        .requestMatchers("/teacher/**")
+                        .requestMatchers("/api/teachers/**")
                         .hasAnyAuthority("ADMIN", "TEACHER")
 
                         .anyRequest()

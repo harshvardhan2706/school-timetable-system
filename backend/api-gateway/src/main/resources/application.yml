@@ -7,18 +7,105 @@ spring:
         locator:
           enabled: false
           lower-case-service-id: true
-      # CORS Configuration
+
+      # ==========================================
+      # CORS Configuration (Centralized at API Gateway)
+      # All downstream services should NOT configure CORS
+      # ==========================================
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:5173"
+              - "http://localhost:5174"
+              - "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - PATCH
+              - OPTIONS
+            allowedHeaders:
+              - Authorization
+              - Content-Type
+              - X-Requested-With
+              - Accept
+              - Origin
+              - Access-Control-Request-Method
+              - Access-Control-Request-Headers
+            exposedHeaders:
+              - Authorization
+              - X-Total-Count
+              - X-Page-Number
+            allowCredentials: true
+            maxAge: 3600
+
+      # ==========================================
+      # Response Header Deduplication Filters
+      # ==========================================
       default-filters:
-        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials
+        # Remove duplicate CORS headers added by downstream services
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials Access-Control-Expose-Headers Access-Control-Allow-Methods Access-Control-Allow-Headers
+        # Add security headers
+        - AddResponseHeader=X-Content-Type-Options,nosniff
+        - AddResponseHeader=X-Frame-Options,DENY
+        - AddResponseHeader=X-XSS-Protection,"1; mode=block"
+
+      routes:
+        # Auth Service Route
+        - id: auth-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - RewritePath=/api/auth/(?<segment>.*),/api/auth/$\{segment}
+
+        # Teacher Service Route
+        - id: teacher-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/teachers/**
+          filters:
+            - RewritePath=/api/teachers/(?<segment>.*),/api/teachers/$\{segment}
+
+        # Timetable Service Route
+        - id: timetable-service
+          uri: http://localhost:8086
+          predicates:
+            - Path=/api/timetable/**,/api/dashboard/**
+          filters:
+            - RewritePath=/api/(?<segment>.*),/api/$\{segment}
+
+        # Class Service (Subjects) Route - exact match (handles /api/subjects preflight)
+        - id: class-service-exact
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/subjects
+          filters:
+            - RewritePath=/api/subjects,/subjects
+
+        # Class Service (Subjects) Route - wildcard (handles /api/subjects/**)
+        - id: class-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/subjects/**
+          filters:
+            - RewritePath=/api/subjects/(?<segment>.*),/subjects/$\{segment}
 
 server:
   port: 8080
+  servlet:
+    context-path: /
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info,metrics,loggers,env,configprops,mappings
+  endpoint:
+    health:
+      show-details: always
 
 eureka:
   client:
@@ -26,6 +113,10 @@ eureka:
       defaultZone: http://localhost:8761/eureka
     register-with-eureka: true
     fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    metadata-map:
+      startup: ${random.int(0,9999)}
 
 # Logging Configuration
 logging:
@@ -33,5 +124,6 @@ logging:
     root: INFO
     org.springframework.cloud.gateway: DEBUG
     org.springframework.security: DEBUG
+    org.springframework.web.cors: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %logger{36} - %msg%n"

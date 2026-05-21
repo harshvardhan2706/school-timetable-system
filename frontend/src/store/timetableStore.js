@@ -2,138 +2,23 @@ import { create } from 'zustand'
 import { validateSchedule as validateScheduleUtil } from '../utils/conflictDetection'
 import autoSaveEngine from '../services/autoSaveEngine'
 import { calculateTeacherAvailability, teacherAvailabilitySelectors } from '../utils/teacherAvailability'
+import { getTimetable, saveTimetable } from '../services/timetableService'
 
-const initialSchedule = {
-  Monday: [
-    {
-      id: 'slot-1',
-      subject: 'Mathematics',
-      teacher: 'Akbar Khan',
-      classroom: 'Room 204',
-      grade: '9A',
-      startTime: '09:00',
-      endTime: '09:45',
-      color: 'blue',
-      hasConflict: false,
-      conflictType: null,
-      conflictMessages: [],
-    },
-    {
-      id: 'slot-2',
-      subject: 'Science',
-      teacher: 'Rahul Sharma',
-      classroom: 'Lab 2',
-      grade: '10B',
-      startTime: '10:00',
-      endTime: '10:45',
-      color: 'emerald',
-      hasConflict: false,
-      conflictType: null,
-      conflictMessages: [],
-    },
-  ],
-  Tuesday: [
-    {
-      id: 'slot-3',
-      subject: 'English',
-      teacher: 'Sarah Jones',
-      classroom: 'Room 102',
-      grade: '9A',
-      startTime: '09:00',
-      endTime: '09:45',
-      color: 'purple',
-      hasConflict: false,
-      conflictType: null,
-      conflictMessages: [],
-    },
-    {
-      id: 'slot-4',
-      subject: 'History',
-      teacher: 'Priya Mehta',
-      classroom: 'Room 107',
-      grade: '10A',
-      startTime: '11:00',
-      endTime: '11:45',
-      color: 'amber',
-      hasConflict: false,
-      conflictType: null,
-      conflictMessages: [],
-    },
-  ],
-  Wednesday: [
-    {
-      id: 'slot-5',
-      subject: 'Music',
-      teacher: 'Lorens',
-      classroom: 'Room 110',
-      grade: '9B',
-      startTime: '09:00',
-      endTime: '09:45',
-      color: 'purple',
-      hasConflict: false,
-      conflictType: null,
-      conflictMessages: [],
-    },
-    {
-      id: 'slot-6',
-      subject: 'Art',
-      teacher: 'Mina Lopez',
-      classroom: 'Studio 3',
-      grade: '11C',
-      startTime: '13:00',
-      endTime: '13:45',
-      color: 'pink',
-      hasConflict: false,
-      conflictType: null,
-      conflictMessages: [],
-    },
-  ],
-  Thursday: [
-    {
-      id: 'slot-7',
-      subject: 'Chemistry',
-      teacher: 'Dr. Kaur',
-      classroom: 'Lab 1',
-      grade: '10C',
-      startTime: '10:00',
-      endTime: '10:45',
-      color: 'cyan',
-      hasConflict: false,
-      conflictType: null,
-      conflictMessages: [],
-    },
-  ],
-  Friday: [
-    {
-      id: 'slot-8',
-      subject: 'Physical Education',
-      teacher: 'Derek Mills',
-      classroom: 'Gym Hall',
-      grade: '9A',
-      startTime: '14:00',
-      endTime: '14:45',
-      color: 'sky',
-      hasConflict: false,
-      conflictType: null,
-      conflictMessages: [],
-    },
-  ],
-}
-
-const validatedInitialSchedule = validateScheduleUtil(initialSchedule)
-const initialTeacherAvailability = calculateTeacherAvailability(validatedInitialSchedule)
+const emptySchedule = {}
 
 const useTimetableStore = create((set, get) => ({
-  schedule: validatedInitialSchedule,
+  schedule: emptySchedule,
   selectedSlot: null,
   activeEditSlot: null,
   isEditModalOpen: false,
+  isScheduleLoading: false,
+  scheduleError: null,
   saveStatus: 'idle',
   hasUnsavedChanges: false,
   lastSavedAt: null,
-  teacherAvailabilityMap: initialTeacherAvailability.teacherAvailabilityMap,
-  teacherLoadMap: initialTeacherAvailability.teacherLoadMap,
-  teacherStats: initialTeacherAvailability.teacherStats,
+  teacherAvailabilityMap: {},
+  teacherLoadMap: {},
+  teacherStats: [],
   availabilitySelectors: teacherAvailabilitySelectors,
   history: {
     past: [],
@@ -141,7 +26,7 @@ const useTimetableStore = create((set, get) => ({
   },
 
   setSchedule: (data) => {
-    const validated = validateScheduleUtil(data)
+    const validated = validateScheduleUtil(data || emptySchedule)
     const availability = calculateTeacherAvailability(validated)
 
     set({
@@ -149,10 +34,37 @@ const useTimetableStore = create((set, get) => ({
       teacherAvailabilityMap: availability.teacherAvailabilityMap,
       teacherLoadMap: availability.teacherLoadMap,
       teacherStats: availability.teacherStats,
+      scheduleError: null,
       hasUnsavedChanges: false,
-      lastSavedAt: new Date(),
       saveStatus: 'saved',
+      lastSavedAt: new Date(),
     })
+  },
+
+  loadSchedule: async () => {
+    set({ isScheduleLoading: true, scheduleError: null })
+    try {
+      const data = await getTimetable()
+      get().setSchedule(data)
+      return data
+    } catch (error) {
+      set({ scheduleError: error })
+      throw error
+    } finally {
+      set({ isScheduleLoading: false })
+    }
+  },
+
+  saveSchedule: async (payload) => {
+    set({ saveStatus: 'saving' })
+    try {
+      const data = await saveTimetable(payload)
+      get().setSchedule(data)
+      return data
+    } catch (error) {
+      set({ saveStatus: 'error', scheduleError: error })
+      throw error
+    }
   },
 
   refreshTeacherAvailability: (schedule) => {
@@ -210,55 +122,73 @@ const useTimetableStore = create((set, get) => ({
       isEditModalOpen: false,
     }),
 
-  updateSlot: (updatedFields) =>
-    set((state) => {
-      if (!state.selectedSlot) return state
+  updateSlot: (updatedFields) => {
+    const state = get()
+    if (!state.selectedSlot) return
 
-      const { day, index } = state.selectedSlot
-      const nextSchedule = { ...state.schedule }
-      const daySlots = [...nextSchedule[day]]
-      const updatedSlot = {
-        ...daySlots[index],
-        ...updatedFields,
-      }
-      daySlots[index] = updatedSlot
-      nextSchedule[day] = daySlots
+    get().recordHistory(state.schedule)
 
-      const validatedSchedule = validateScheduleUtil(nextSchedule)
-      const validatedSlot = validatedSchedule[day][index]
-      get().refreshTeacherAvailability(validatedSchedule)
+    const { day, index } = state.selectedSlot
+    const nextSchedule = { ...state.schedule }
+    const daySlots = [...(nextSchedule[day] || [])]
+    const updatedSlot = {
+      ...daySlots[index],
+      ...updatedFields,
+    }
+    daySlots[index] = updatedSlot
+    nextSchedule[day] = daySlots
 
-      return {
-        schedule: validatedSchedule,
-        selectedSlot: { ...state.selectedSlot, slot: validatedSlot },
-        activeEditSlot: state.activeEditSlot
-          ? { ...state.activeEditSlot, slot: validatedSlot }
-          : null,
-      }
-    }),
+    const validatedSchedule = validateScheduleUtil(nextSchedule)
+    const validatedSlot = validatedSchedule[day]?.[index]
+    const availability = calculateTeacherAvailability(validatedSchedule)
 
-  swapSlots: (sourceDay, sourceIndex, targetDay, targetIndex) =>
-    set((state) => {
-      const nextSchedule = { ...state.schedule }
-      const sourceSlots = [...nextSchedule[sourceDay]]
-      const targetSlots = [...nextSchedule[targetDay]]
+    set({
+      schedule: validatedSchedule,
+      selectedSlot: { ...state.selectedSlot, slot: validatedSlot },
+      activeEditSlot: state.activeEditSlot
+        ? { ...state.activeEditSlot, slot: validatedSlot }
+        : null,
+      teacherAvailabilityMap: availability.teacherAvailabilityMap,
+      teacherLoadMap: availability.teacherLoadMap,
+      teacherStats: availability.teacherStats,
+      hasUnsavedChanges: true,
+      saveStatus: 'idle',
+    })
 
-      if (!sourceSlots[sourceIndex] || !targetSlots[targetIndex]) return state
+    get()._triggerAutoSave(validatedSchedule)
+  },
 
-      const temp = sourceSlots[sourceIndex]
-      sourceSlots[sourceIndex] = targetSlots[targetIndex]
-      targetSlots[targetIndex] = temp
+  swapSlots: (sourceDay, sourceIndex, targetDay, targetIndex) => {
+    const state = get()
+    get().recordHistory(state.schedule)
 
-      nextSchedule[sourceDay] = sourceSlots
-      nextSchedule[targetDay] = targetSlots
+    const nextSchedule = { ...state.schedule }
+    const sourceSlots = [...(nextSchedule[sourceDay] || [])]
+    const targetSlots = [...(nextSchedule[targetDay] || [])]
 
-      const validatedSchedule = validateScheduleUtil(nextSchedule)
-      get().refreshTeacherAvailability(validatedSchedule)
+    if (!sourceSlots[sourceIndex] || !targetSlots[targetIndex]) return
 
-      return {
-        schedule: validatedSchedule,
-      }
-    }),
+    const temp = sourceSlots[sourceIndex]
+    sourceSlots[sourceIndex] = targetSlots[targetIndex]
+    targetSlots[targetIndex] = temp
+
+    nextSchedule[sourceDay] = sourceSlots
+    nextSchedule[targetDay] = targetSlots
+
+    const validatedSchedule = validateScheduleUtil(nextSchedule)
+    const availability = calculateTeacherAvailability(validatedSchedule)
+
+    set({
+      schedule: validatedSchedule,
+      teacherAvailabilityMap: availability.teacherAvailabilityMap,
+      teacherLoadMap: availability.teacherLoadMap,
+      teacherStats: availability.teacherStats,
+      hasUnsavedChanges: true,
+      saveStatus: 'idle',
+    })
+
+    get()._triggerAutoSave(validatedSchedule)
+  },
 
   recordHistory: (snapshot) =>
     set((state) => ({
